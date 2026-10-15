@@ -58,7 +58,7 @@ main{flex:1;overflow-y:auto;padding-bottom:calc(env(safe-area-inset-bottom,0px) 
 .nav{display:flex;justify-content:space-between;gap:10px;margin:24px 0}
 .nav button{flex:1;padding:12px;border:1px solid var(--bd);background:var(--card);border-radius:12px}
 .nav button:disabled{opacity:.35}
-#toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#222;color:#fff;padding:8px 16px;border-radius:20px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .25s;z-index:20}
+#toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#222;color:#fff;padding:8px 16px;border-radius:20px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .25s;z-index:20;max-width:90%;text-align:center}
 #toast.show{opacity:1}
 .hide{display:none!important}
 .pill{font-size:12px;padding:2px 8px;border-radius:10px;background:rgba(127,127,127,.25)}
@@ -66,7 +66,7 @@ main{flex:1;overflow-y:auto;padding-bottom:calc(env(safe-area-inset-bottom,0px) 
 </head>
 <body>
 <header>
-  <button class="ib hide" id="back" aria-label="Voltar">←</button>
+  <button class="ib hide" id="back" aria-label="Voltar ao índice">←</button>
   <h1 id="title">Hinário Adventista</h1>
   <span class="pill hide" id="net">offline</span>
   <button class="ib hide" id="install" aria-label="Instalar app" title="Instalar app">⬇</button>
@@ -98,13 +98,13 @@ let q = '', cat = 'Todos', wakeLock = null;
 
 const saveS = () => LS.set('settings', S);
 const saveF = () => LS.set('favs', [...favs]);
-function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('show'),1800)}
+function toast(m,ms){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('show'),ms||1800)}
 function applyTheme(){
   const t = S.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark':'light');
   document.documentElement.dataset.theme = t;
   document.querySelector('meta[name=theme-color]').content = t==='dark' ? '#1e2327' : '#1e3a5f';
 }
-const esc = s => s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const esc = s => String(s ?? '').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 /* ---------- LISTA ---------- */
 function renderList(keepScroll){
@@ -112,18 +112,16 @@ function renderList(keepScroll){
   $('#title').textContent = 'Hinário Adventista';
   releaseWake();
   const main = $('#main');
-  if(!main.querySelector('#q')){
-    main.innerHTML = `<div class="wrap">
-      <div class="search"><input id="q" type="search" placeholder="Buscar por número, título ou trecho da letra…" autocomplete="off" value="${esc(q)}"></div>
-      <div class="chips" id="chips"></div><div class="count" id="count"></div><div id="list"></div></div>`;
-    $('#q').addEventListener('input', e=>{q=e.target.value;fillList()});
-    $('#chips').innerHTML = ['Todos','★ Favoritos',...cats].map(c=>`<button class="chip" data-c="${esc(c)}">${esc(c)}</button>`).join('');
-    $('#chips').addEventListener('click', e=>{
-      const b=e.target.closest('.chip'); if(!b) return; cat=b.dataset.c; fillList();
-    });
-  }
+  main.innerHTML = `<div class="wrap">
+    <div class="search"><input id="q" type="search" placeholder="Buscar por número, título ou trecho da letra…" autocomplete="off" value="${esc(q)}"></div>
+    <div class="chips" id="chips"></div><div class="count" id="count"></div><div id="list"></div></div>`;
+  $('#q').addEventListener('input', e=>{q=e.target.value;fillList()});
+  $('#chips').innerHTML = ['Todos','★ Favoritos',...cats].map(c=>`<button class="chip" data-c="${esc(c)}">${esc(c)}</button>`).join('');
+  $('#chips').addEventListener('click', e=>{
+    const b=e.target.closest('.chip'); if(!b) return; cat=b.dataset.c; fillList();
+  });
   fillList();
-  if(keepScroll!==undefined) main.scrollTop = keepScroll;
+  main.scrollTop = keepScroll||0;
 }
 function fillList(){
   document.querySelectorAll('.chip').forEach(b=>b.classList.toggle('on', b.dataset.c===cat));
@@ -142,27 +140,26 @@ function fillList(){
     }
   }
   $('#count').textContent = res.length + (res.length===1?' hino':' hinos');
-  $('#list').innerHTML = res.length ? res.slice(0,300).map(i=>{
+  $('#list').innerHTML = res.length ? res.map(i=>{
     const h=H[i];
     return `<button class="item" data-n="${h.n}"><span class="num">${String(h.n).padStart(3,'0')}</span>
       <span class="t"><b>${esc(h.t)}</b><small>${esc(h.s||h.c)}</small></span>${favs.has(h.n)?'<span class="st">★</span>':''}</button>`;
-  }).join('') + (res.length>300?'<div class="empty">Refine a busca para ver mais…</div>':'')
+  }).join('')
   : `<div class="empty">${cat==='★ Favoritos'?'Nenhum favorito ainda. Abra um hino e toque em ☆.':'Nenhum hino encontrado.'}</div>`;
 }
 
 /* ---------- HINO ---------- */
 let cur = null;
 function renderHino(n){
-  const h = H.find(x=>x.n===n); if(!h){location.hash='#/';return}
+  const h = H.find(x=>x.n===n); if(!h){history.replaceState(null,'','#/');route();return}
   cur = h;
   $('#back').classList.remove('hide'); $('#bar').classList.remove('hide');
   $('#title').textContent = String(h.n).padStart(3,'0')+' · '+h.t;
   const coro = h.k.length ? h.k[0] : null;
-  const verses = h.v.map((v,i)=>{
-    let s = `<div class="verse"><div class="vn">${esc(v[0])}</div><div class="vt">${esc(v[1])}</div></div>`;
-    if(coro && (S.rep || i===0)) s += `<div class="verse coro"><div class="vn">♪</div><div class="vt">${esc(coro[1])}</div></div>`;
-    return s;
-  }).join('') || (coro?`<div class="verse coro"><div class="vn">♪</div><div class="vt">${esc(coro[1])}</div></div>`:'');
+  const cb = c=>`<div class="verse coro"><div class="vn">♪</div><div class="vt">${esc(c)}</div></div>`;
+  const verses = h.v.map((v,i)=>
+    `<div class="verse"><div class="vn">${esc(v[0])}</div><div class="vt">${esc(v[1])}</div></div>` + (coro && (S.rep||i===0) ? cb(coro[1]) : '')
+  ).join('') || (coro?cb(coro[1]):'');
   $('#main').innerHTML = `<div class="wrap" style="--fs:${S.fs}px">
     <div class="meta"><div class="big">${esc(h.c)}${h.s&&h.s!==h.c?' · '+esc(h.s):''}</div>
       <h2>${esc(h.t)}</h2>
@@ -172,7 +169,7 @@ function renderHino(n){
     ${verses}
     <div class="nav"><button id="prev" ${h.n<=1?'disabled':''}>← Anterior</button><button id="next" ${h.n>=H.length?'disabled':''}>Próximo →</button></div></div>`;
   $('#main').scrollTop = 0;
-  $('#prev').onclick = ()=>go(h.n-1); $('#next').onclick = ()=>go(h.n+1);
+  $('#prev').onclick = ()=>go(h.n-1,true); $('#next').onclick = ()=>go(h.n+1,true);
   updBar();
   LS.set('last', h.n);
 }
@@ -183,7 +180,18 @@ function updBar(){
   $('#rep').classList.toggle('on', S.rep);
   $('#wake').classList.toggle('on', !!wakeLock);
 }
-const go = n => { location.hash = '#/h/'+n };
+/* Abrir hino da lista = novo passo no histórico; anterior/próximo substituem o passo atual.
+   Assim o botão voltar sempre cai no índice. */
+function go(n, replace){
+  const url = '#/h/'+n;
+  if(replace) history.replaceState(history.state, '', url);
+  else history.pushState({fromList:1}, '', url);
+  route();
+}
+function goIndex(){
+  if(history.state && history.state.fromList){ history.back(); }
+  else { history.replaceState(null, '', '#/'); route(); }
+}
 async function toggleWake(){
   if(wakeLock){ releaseWake(); toast('Tela pode apagar'); updBar(); return }
   try{ wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release',()=>{wakeLock=null;updBar()}); toast('Tela permanecerá ligada'); }
@@ -197,15 +205,15 @@ let listScroll = 0;
 function route(){
   const m = location.hash.match(/^#\/h\/(\d+)/);
   if(m){ renderHino(+m[1]); }
-  else { cur = null; $('#main').innerHTML=''; renderList(listScroll); }
+  else { cur = null; renderList(listScroll); }
 }
-window.addEventListener('hashchange', route);
+window.addEventListener('popstate', route);
 
 /* ---------- EVENTOS ---------- */
 $('#main').addEventListener('click', e=>{
   const it = e.target.closest('.item'); if(it){ listScroll=$('#main').scrollTop; go(+it.dataset.n) }
 });
-$('#back').onclick = ()=>{ if(history.length>1) history.back(); else location.hash='#/' };
+$('#back').onclick = goIndex;
 $('#theme').onclick = ()=>{ S.theme = document.documentElement.dataset.theme==='dark'?'light':'dark'; saveS(); applyTheme() };
 $('#fsm').onclick = ()=>{ S.fs=Math.max(14,S.fs-2); saveS(); renderHino(cur.n) };
 $('#fsp').onclick = ()=>{ S.fs=Math.min(44,S.fs+2); saveS(); renderHino(cur.n) };
@@ -214,20 +222,31 @@ $('#wake').onclick = toggleWake;
 $('#fav').onclick = ()=>{ favs.has(cur.n)?favs.delete(cur.n):favs.add(cur.n); saveF(); updBar(); toast(favs.has(cur.n)?'Adicionado aos favoritos':'Removido dos favoritos') };
 
 /* ---------- INSTALAÇÃO / OFFLINE ---------- */
+const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
 let deferred = null;
-addEventListener('beforeinstallprompt', e=>{ e.preventDefault(); deferred=e; $('#install').classList.remove('hide') });
-$('#install').onclick = async ()=>{ if(!deferred) return; deferred.prompt(); await deferred.userChoice; deferred=null; $('#install').classList.add('hide') };
+// O botão ⬇ aparece sempre que o app ainda não está instalado
+if(!standalone) $('#install').classList.remove('hide');
+addEventListener('beforeinstallprompt', e=>{ e.preventDefault(); deferred=e; });
+$('#install').onclick = async ()=>{
+  if(deferred){ deferred.prompt(); await deferred.userChoice; deferred=null; return; }
+  toast(isIOS
+    ? 'Toque em Compartilhar (□↑) e depois em "Adicionar à Tela de Início"'
+    : 'Abra o menu ⋮ do navegador e toque em "Instalar app" ou "Adicionar à tela inicial"', 6000);
+};
 addEventListener('appinstalled', ()=>{ $('#install').classList.add('hide'); toast('App instalado!') });
 const netUpd = ()=> $('#net').classList.toggle('hide', navigator.onLine);
 addEventListener('online',netUpd); addEventListener('offline',netUpd); netUpd();
 
 if('serviceWorker' in navigator){
+  const had = !!navigator.serviceWorker.controller;
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{ if(had && !reloaded){reloaded=true; location.reload()} });
   addEventListener('load', async ()=>{
     try{
-      const wasControlled = !!navigator.serviceWorker.controller;
-      await navigator.serviceWorker.register('sw.js');
+      await navigator.serviceWorker.register('sw.js', {updateViaCache:'none'});
       await navigator.serviceWorker.ready;
-      if(!wasControlled && !LS.get('offlineToast',false)){ LS.set('offlineToast',true); toast('✓ Hinário salvo para uso offline'); }
+      if(!had && !LS.get('offlineToast',false)){ LS.set('offlineToast',true); toast('✓ Hinário salvo para uso offline'); }
     }catch(e){ console.warn('SW falhou', e) }
   });
 }
