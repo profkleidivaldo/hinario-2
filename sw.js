@@ -1,4 +1,4 @@
-const VERSION = 'hinario-v2';
+const VERSION = 'hinario-v3';
 const ASSETS = ['./', './index.html', './hinos.json', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png'];
 

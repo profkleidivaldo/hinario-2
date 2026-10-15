@@ -43,7 +43,7 @@ main{flex:1;overflow-y:auto;overscroll-behavior:contain;padding-bottom:calc(env(
 .count{color:var(--mu);font-size:13px;font-style:italic;margin-bottom:4px}
 .sec{margin:22px 0 4px;padding-bottom:4px;border-bottom:1px solid var(--ac2);color:var(--ac);font-weight:700;font-size:15px;letter-spacing:.08em;text-transform:uppercase}
 .sec small{display:block;color:var(--mu);font-weight:400;letter-spacing:.02em;text-transform:none;font-style:italic;font-size:13px}
-.item{display:flex;align-items:baseline;gap:12px;width:100%;text-align:left;padding:9px 2px;border-bottom:1px dotted var(--bd);content-visibility:auto;contain-intrinsic-size:auto 44px}
+.item{display:flex;align-items:baseline;gap:12px;width:100%;text-align:left;padding:9px 2px;border-bottom:1px dotted var(--bd)}
 .item:active{background:rgba(184,134,43,.15)}
 .num{flex:none;width:42px;text-align:right;color:var(--ac);font-weight:700;font-variant-numeric:lining-nums tabular-nums}
 .item .t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -163,7 +163,7 @@ function fillList(){
 /* ---------- HINO ---------- */
 let cur = null;
 function renderHino(n){
-  const h = H.find(x=>x.n===n); if(!h){location.hash='#/';return}
+  const h = H.find(x=>x.n===n); if(!h){history.replaceState(null,'','#/');route();return}
   cur = h;
   $('#back').classList.remove('hide'); $('#sp').classList.add('hide'); $('#bar').classList.remove('hide');
   $('#title').textContent = 'Hino '+h.n;
@@ -183,7 +183,7 @@ function renderHino(n){
     <div class="amen">❧</div>
     <div class="nav"><button id="prev" ${h.n<=1?'disabled':''}>← ${h.n-1||''}</button><button id="next" ${h.n>=H.length?'disabled':''}>${h.n+1>H.length?'':h.n+1} →</button></div></div></div>`;
   $('#main').scrollTop = 0;
-  $('#prev').onclick = ()=>go(h.n-1); $('#next').onclick = ()=>go(h.n+1);
+  $('#prev').onclick = ()=>go(h.n-1,true); $('#next').onclick = ()=>go(h.n+1,true);
   updBar();
   LS.set('last', h.n);
 }
@@ -194,7 +194,16 @@ function updBar(){
   $('#rep').classList.toggle('on', S.rep);
   $('#wake').classList.toggle('on', !!wakeLock);
 }
-const go = n => { location.hash = '#/h/'+n };
+function go(n, replace){
+  const url = '#/h/'+n;
+  if(replace) history.replaceState(history.state, '', url);
+  else history.pushState({fromList:1}, '', url);
+  route();
+}
+function goIndex(){
+  if(history.state && history.state.fromList){ history.back(); }
+  else { history.replaceState(null, '', '#/'); route(); }
+}
 async function toggleWake(){
   if(wakeLock){ releaseWake(); toast('Tela pode apagar'); updBar(); return }
   try{ wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release',()=>{wakeLock=null;updBar()}); toast('Tela permanecerá ligada'); }
@@ -210,7 +219,7 @@ function route(){
   if(m){ renderHino(+m[1]); }
   else { cur = null; $('#main').innerHTML=''; renderList(listScroll); }
 }
-window.addEventListener('hashchange', route);
+window.addEventListener('popstate', route);
 
 /* ---------- EVENTOS ---------- */
 let tx=0,ty=0;
@@ -223,7 +232,7 @@ addEventListener('keydown',e=>{ if(!cur||/INPUT/.test(e.target.tagName)) return;
 $('#main').addEventListener('click', e=>{
   const it = e.target.closest('.item'); if(it){ listScroll=$('#main').scrollTop; go(+it.dataset.n) }
 });
-$('#back').onclick = ()=>{ if(history.length>1) history.back(); else location.hash='#/' };
+$('#back').onclick = goIndex;
 $('#theme').onclick = ()=>{ S.theme = document.documentElement.dataset.theme==='dark'?'light':'dark'; saveS(); applyTheme() };
 const keep=f=>{const m=$('#main'),t=m.scrollTop;f();m.scrollTop=t};
 $('#fsm').onclick = ()=>{ S.fs=Math.max(14,S.fs-2); saveS(); keep(()=>renderHino(cur.n)) };
