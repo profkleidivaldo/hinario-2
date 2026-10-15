@@ -1,9 +1,11 @@
 HINÁRIO ADVENTISTA - PWA (610 hinos, funciona offline)
 
-Para instalar no celular o app precisa estar hospedado em HTTPS (o Service Worker não roda em file://).
-Opções gratuitas: Vercel, Netlify, GitHub Pages ou Cloudflare Pages - basta enviar esta pasta.
+1) Envie TODOS os arquivos desta pasta para uma hospedagem HTTPS (Vercel, Netlify, GitHub Pages, Cloudflare Pages).
+   Mantenha a estrutura: index.html, manifest.webmanifest, sw.js, hinos.json e a pasta icons/.
+2) Abra o endereço no celular, COM internet, e aguarde aparecer "Hinário salvo para uso offline".
+3) Toque no botão ⬇ do topo (ou menu ⋮ > Instalar app). No iPhone: Compartilhar > Adicionar à Tela de Início.
 
-Teste local: dentro da pasta, rode  python3 -m http.server 8000  e abra http://localhost:8000
-
-Para atualizar os hinos: substitua hinos.json e mude VERSION em sw.js (ex.: 'hinario-v2').
-Dados: https://github.com/moser-jose/Hina7 (src/api/hinario.json), licença MIT.
+Se já tinha instalado uma versão antiga e não atualiza / não deixa instalar:
+ - Desinstale o app antigo da tela inicial.
+ - No Chrome: ⋮ > Configurações > Configurações do site > Armazenamento (ou Informações do site) > Limpar dados deste site.
+ - Abra o endereço de novo e instale.
